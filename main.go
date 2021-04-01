@@ -55,6 +55,7 @@ type Options struct {
 	scmhelpers.Factory
 
 	Dir           string
+	WorkDir       string
 	GitClient     gitclient.Interface
 	CommandRunner cmdrunner.CommandRunner
 }
@@ -78,12 +79,15 @@ func (o *Options) Validate() error {
 	}
 
 	if o.Dir == "" {
-		o.Dir = "jx-plugins"
+		o.Dir = "."
 	}
-	log.Logger().Infof("using directory %s", info(o.Dir))
-	err = os.MkdirAll(o.Dir, files.DefaultDirWritePermissions)
+	if o.WorkDir == "" {
+		o.WorkDir = filepath.Join(o.Dir, "jx-plugins")
+	}
+	log.Logger().Infof("using directory %s", info(o.WorkDir))
+	err = os.MkdirAll(o.WorkDir, files.DefaultDirWritePermissions)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create dir %s", o.Dir)
+		return errors.Wrapf(err, "failed to create dir %s", o.WorkDir)
 	}
 	return nil
 }
@@ -147,9 +151,9 @@ func (o *Options) cloneRepository(repo *scm.Repository) error {
 		return nil
 	}
 
-	dir, err := filepath.Abs(o.Dir)
+	dir, err := filepath.Abs(o.WorkDir)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get absolute dir of %s", o.Dir)
+		return errors.Wrapf(err, "failed to get absolute dir of %s", o.WorkDir)
 	}
 
 	toDir := filepath.Join(dir, repo.Name)
@@ -167,9 +171,9 @@ func (o *Options) cloneRepository(repo *scm.Repository) error {
 }
 
 func (o *Options) generateDocs() error {
-	fileNames, err := ioutil.ReadDir(o.Dir)
+	fileNames, err := ioutil.ReadDir(o.WorkDir)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read dir %s", o.Dir)
+		return errors.Wrapf(err, "failed to read dir %s", o.WorkDir)
 	}
 
 	for _, f := range fileNames {
@@ -178,7 +182,7 @@ func (o *Options) generateDocs() error {
 		}
 		name := f.Name()
 
-		srcDir := filepath.Join(o.Dir, name, "docs", "cmd")
+		srcDir := filepath.Join(o.WorkDir, name, "docs", "cmd")
 		nameDotMd := name + ".md"
 		path := filepath.Join(srcDir, nameDotMd)
 		exists, err := files.FileExists(path)
@@ -191,7 +195,7 @@ func (o *Options) generateDocs() error {
 
 		log.Logger().Infof("found docs %s", info(path))
 
-		destDir := filepath.Join("content", "en", "v3", "develop", "reference", "jx", name)
+		destDir := filepath.Join(o.Dir, "content", "en", "v3", "develop", "reference", "jx", name)
 
 		err = os.MkdirAll(destDir, files.DefaultDirWritePermissions)
 		if err != nil {
