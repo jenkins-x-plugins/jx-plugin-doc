@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	cloneRepositories = false
+	cloneRepositories = true
 
 	headerTemplate = `---
 title: %s
