@@ -40,6 +40,9 @@ var (
 
 func main() {
 	o := &Options{}
+	if len(os.Args) > 1 {
+		o.Dir = os.Args[1]
+	}
 	err := o.Run()
 	if err != nil {
 		fmt.Sprintf("failed: %v\n", err)
@@ -77,6 +80,7 @@ func (o *Options) Validate() error {
 	if o.Dir == "" {
 		o.Dir = "jx-plugins"
 	}
+	log.Logger().Infof("using directory %s", info(o.Dir))
 	err = os.MkdirAll(o.Dir, files.DefaultDirWritePermissions)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create dir %s", o.Dir)
