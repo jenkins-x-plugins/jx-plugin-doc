@@ -47,9 +47,10 @@ func main() {
 	}
 	err := o.Run()
 	if err != nil {
-		fmt.Sprintf("failed: %v\n", err)
+		log.Logger().Errorf("failed: %v", err)
 		os.Exit(1)
 	}
+	log.Logger().Infof("completed the plugin generator")
 	os.Exit(0)
 }
 
@@ -107,6 +108,7 @@ func (o *Options) Run() error {
 			return errors.Wrapf(err, "failed to clone plugins")
 		}
 	}
+	log.Logger().Infof("now generating the plugin CLI docs")
 
 	err = o.generateDocs()
 	if err != nil {
