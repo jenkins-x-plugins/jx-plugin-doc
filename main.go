@@ -253,6 +253,12 @@ func (o *Options) generateDocs() error {
 				return errors.Wrapf(err, "failed to read file %s", path)
 			}
 			md := strings.ReplaceAll(string(data), ".md)", ")")
+
+			// lets replace the links to the _index.md page
+			indexLink := fmt.Sprintf("[%](%s)", name, name)
+			newIndexLink := fmt.Sprintf("[%](..)", name)
+			md = strings.ReplaceAll(md, indexLink, newIndexLink)
+
 			alias := nameWithoutExt
 			text := fmt.Sprintf(headerTemplate, title, linkTitle, description, alias) + md
 
