@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	cloneRepositories = true
+	cloneRepositories = false
 
 	headerTemplate = `---
 title: %s
@@ -255,8 +255,8 @@ func (o *Options) generateDocs() error {
 			md := strings.ReplaceAll(string(data), ".md)", ")")
 
 			// lets replace the links to the _index.md page
-			indexLink := fmt.Sprintf("[%](%s)", name, name)
-			newIndexLink := fmt.Sprintf("[%](..)", name)
+			indexLink := fmt.Sprintf("[%s](%s)", name, name)
+			newIndexLink := fmt.Sprintf("[%s](..)", name)
 			md = strings.ReplaceAll(md, indexLink, newIndexLink)
 
 			alias := nameWithoutExt
