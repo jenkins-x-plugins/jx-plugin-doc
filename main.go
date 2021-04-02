@@ -128,6 +128,9 @@ func (o *Options) clonePlugins(ctx context.Context) error {
 	}
 
 	for _, repo := range repos {
+		if repo.Private {
+			continue
+		}
 		if repo.Archived {
 			log.Logger().Infof("ignoring archived repository %s", info(repo.Name))
 			continue
