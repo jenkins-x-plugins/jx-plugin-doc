@@ -27,6 +27,8 @@ title: %s
 linktitle: %s
 type: docs
 description: %s
+aliases:
+  - %s
 ---
 
 `
@@ -171,6 +173,7 @@ func (o *Options) cloneRepository(repo *scm.Repository) error {
 }
 
 func (o *Options) generateDocs() error {
+	log.Logger().Infof("reading %s", info(o.WorkDir))
 	fileNames, err := ioutil.ReadDir(o.WorkDir)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read dir %s", o.WorkDir)
@@ -182,7 +185,8 @@ func (o *Options) generateDocs() error {
 		}
 		name := f.Name()
 
-		srcDir := filepath.Join(o.WorkDir, name, "docs", "cmd")
+		pluginDir := filepath.Join(o.WorkDir, name)
+		srcDir := filepath.Join(pluginDir, "docs", "cmd")
 		nameDotMd := name + ".md"
 		path := filepath.Join(srcDir, nameDotMd)
 		exists, err := files.FileExists(path)
@@ -190,6 +194,17 @@ func (o *Options) generateDocs() error {
 			return errors.Wrapf(err, "failed to check if file exists %s", path)
 		}
 		if !exists {
+			path = filepath.Join(pluginDir, "README.md")
+			readmeExist, err := files.FileExists(path)
+			if err != nil {
+				return errors.Wrapf(err, "failed to check if file exists %s", path)
+			}
+			path := filepath.Join(pluginDir, "docs", "cmd")
+			docsExist, err := files.DirExists(path)
+			if err != nil {
+				return errors.Wrapf(err, "failed to check if dir exists %s", path)
+			}
+			log.Logger().Info("docs %s exists: %v README exists %v", path, docsExist, readmeExist)
 			continue
 		}
 
@@ -233,7 +248,8 @@ func (o *Options) generateDocs() error {
 				return errors.Wrapf(err, "failed to read file %s", path)
 			}
 			md := strings.ReplaceAll(string(data), ".md)", ")")
-			text := fmt.Sprintf(headerTemplate, title, linkTitle, description) + md
+			alias := nameWithoutExt
+			text := fmt.Sprintf(headerTemplate, title, linkTitle, description, alias) + md
 
 			err = ioutil.WriteFile(destFile, []byte(text), files.DefaultFileWritePermissions)
 			if err != nil {
