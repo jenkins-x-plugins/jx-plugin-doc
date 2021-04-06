@@ -209,7 +209,7 @@ func (o *Options) generateDocs() error {
 			if err != nil {
 				return errors.Wrapf(err, "failed to check if dir exists %s", path)
 			}
-			log.Logger().Info("docs %s exists: %v README exists %v", path, docsExist, readmeExist)
+			log.Logger().Infof("docs %s exists: %v README exists %v", path, docsExist, readmeExist)
 			continue
 		}
 
@@ -270,6 +270,8 @@ func (o *Options) generateDocs() error {
 				md = strings.ReplaceAll(md, indexLink, "](..)")
 			}
 
+			md = WrapExamplesInCodeBlock(md)
+
 			alias := nameWithoutExt
 			text := fmt.Sprintf(headerTemplate, title, linkTitle, description, alias) + md
 
@@ -280,4 +282,45 @@ func (o *Options) generateDocs() error {
 		}
 	}
 	return nil
+}
+
+func WrapExamplesInCodeBlock(md string) string {
+	lines := strings.Split(md, "\n")
+	var answer []string
+	examples := false
+	addedBlock := false
+	ignoreBlock := false
+	for _, line := range lines {
+		if examples && strings.HasPrefix(line, "### ") {
+			examples = false
+		}
+		if examples {
+			if strings.HasPrefix(line, "  ") && !addedBlock {
+				if strings.HasPrefix(line, "  `") {
+					ignoreBlock = true
+				}
+				if !ignoreBlock && !strings.HasPrefix(line, "  *") && strings.TrimSpace(line) != "" {
+					answer = append(answer, "  ```bash")
+					addedBlock = true
+				}
+			}
+		}
+
+		answer = append(answer, line)
+
+		if examples {
+			if !strings.HasPrefix(line, "  ") {
+				if addedBlock && !ignoreBlock {
+					answer = append(answer, "  ```")
+				}
+				addedBlock = false
+				ignoreBlock = false
+			}
+		}
+
+		if line == "### Examples" || strings.HasPrefix(line, "### Examples") {
+			examples = true
+		}
+	}
+	return strings.Join(answer, "\n")
 }
