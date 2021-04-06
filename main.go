@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	cloneRepositories = true
-
 	headerTemplate = `---
 title: %s
 linktitle: %s
@@ -35,6 +33,8 @@ aliases:
 )
 
 var (
+	cloneRepositories = os.Getenv("JX_DISABLE_GIT_CLONE") != "true"
+
 	info = termcolor.ColorInfo
 
 	ignorePlugins = []string{}
@@ -214,14 +214,6 @@ func (o *Options) generateDocs() error {
 		}
 
 		log.Logger().Infof("found docs %s", info(path))
-
-		destDir := filepath.Join(o.Dir, "content", "en", "v3", "develop", "reference", "jx", name)
-
-		err = os.MkdirAll(destDir, files.DefaultDirWritePermissions)
-		if err != nil {
-			return errors.Wrapf(err, "failed to create dir %s", destDir)
-		}
-
 		mdFiles, err := ioutil.ReadDir(srcDir)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read %s", srcDir)
@@ -235,14 +227,23 @@ func (o *Options) generateDocs() error {
 
 			nameWithoutExt := strings.TrimSuffix(mdName, ".md")
 			nameWithoutPrefix := "jx " + strings.TrimPrefix(nameWithoutExt, "jx-")
-			title := strings.ReplaceAll(nameWithoutPrefix, "_", " ")
-			linkTitle := strings.TrimPrefix(title, "jx ")
-			description := ""
+			nameWithoutJX := strings.TrimPrefix(nameWithoutExt, "jx-")
+			parts := strings.Split(nameWithoutJX, "_")
 
-			destFile := filepath.Join(destDir, mdName)
-			if mdName == nameDotMd {
-				destFile = filepath.Join(destDir, "_index.md")
-			} else {
+			title := strings.ReplaceAll(nameWithoutPrefix, "_", " ")
+			description := ""
+			linkTitle := parts[len(parts)-1]
+
+			destRootDir := filepath.Join(o.Dir, "content", "en", "v3", "develop", "reference", "jx")
+			destDir := filepath.Join(destRootDir, filepath.Join(parts...))
+
+			err = os.MkdirAll(destDir, files.DefaultDirWritePermissions)
+			if err != nil {
+				return errors.Wrapf(err, "failed to create dir %s", destDir)
+			}
+
+			destFile := filepath.Join(destDir, "_index.md")
+			if mdName != nameDotMd {
 				words := strings.Split(linkTitle, " ")
 				linkTitle = strings.TrimPrefix(linkTitle, words[0]+" ")
 			}
@@ -258,6 +259,12 @@ func (o *Options) generateDocs() error {
 			indexLink := fmt.Sprintf("[%s](%s)", name, name)
 			newIndexLink := fmt.Sprintf("[%s](..)", name)
 			md = strings.ReplaceAll(md, indexLink, newIndexLink)
+
+			if len(parts) > 2 {
+				parentName := "jx-" + strings.Join(parts[0:2], "_")
+				indexLink = fmt.Sprintf("](%s)", parentName)
+				md = strings.ReplaceAll(md, indexLink, "](..)")
+			}
 
 			alias := nameWithoutExt
 			text := fmt.Sprintf(headerTemplate, title, linkTitle, description, alias) + md
