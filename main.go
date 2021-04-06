@@ -260,6 +260,10 @@ func (o *Options) generateDocs() error {
 			newIndexLink := fmt.Sprintf("[%s](..)", name)
 			md = strings.ReplaceAll(md, indexLink, newIndexLink)
 
+			for _, prefix := range []string{"## ", "[", "```\n"} {
+				md = strings.ReplaceAll(md, prefix+name, prefix+strings.ReplaceAll(name, "-", " "))
+			}
+
 			if len(parts) > 2 {
 				parentName := "jx-" + strings.Join(parts[0:2], "_")
 				indexLink = fmt.Sprintf("](%s)", parentName)
