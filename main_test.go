@@ -5,6 +5,31 @@ import (
 	"testing"
 )
 
+var (
+	samplePage = `
+## jx-gitops annotate
+
+Annotates all kubernetes resources in the given directory tree
+
+### Usage
+
+    jx-gitops annotate
+
+### Synopsis
+
+Annotates all kubernetes resources in the given directory tree
+
+### Examples
+
+  # updates recursively annotates all resources in the current directory
+  jx-gitops annotate myannotate=cheese another=thing
+  # updates recursively all resources
+  jx-gitops annotate --dir myresource-dir foo=bar
+
+### Options
+`
+)
+
 func TestWrapExamplesInCodeBlock(t *testing.T) {
 	testCases := []struct {
 		input    string
@@ -25,4 +50,9 @@ func TestWrapExamplesInCodeBlock(t *testing.T) {
 		got := WrapExamplesInCodeBlock(tc.input)
 		assert.Equal(t, tc.expected, got, "for input %s", tc.input)
 	}
+}
+
+func TestReadCobraDescription(t *testing.T) {
+	desc := ReadCobraDescription(samplePage)
+	assert.Equal(t, "Annotates all kubernetes resources in the given directory tree", desc, "failed to find description")
 }

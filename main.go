@@ -24,7 +24,7 @@ const (
 title: %s
 linktitle: %s
 type: docs
-description: %s
+description: "%s"
 aliases:
   - %s
 ---
@@ -231,7 +231,6 @@ func (o *Options) generateDocs() error {
 			parts := strings.Split(nameWithoutJX, "_")
 
 			title := strings.ReplaceAll(nameWithoutPrefix, "_", " ")
-			description := ""
 			linkTitle := parts[len(parts)-1]
 
 			destRootDir := filepath.Join(o.Dir, "content", "en", "v3", "develop", "reference", "jx")
@@ -253,6 +252,7 @@ func (o *Options) generateDocs() error {
 			if err != nil {
 				return errors.Wrapf(err, "failed to read file %s", path)
 			}
+			description := ReadCobraDescription(string(data))
 			md := strings.ReplaceAll(string(data), ".md)", ")")
 
 			// lets replace the links to the _index.md page
@@ -272,6 +272,12 @@ func (o *Options) generateDocs() error {
 
 			md = WrapExamplesInCodeBlock(md)
 
+			// lets remove the "see also" section
+			i := strings.Index(md, "### SEE ALSO")
+			if i > 0 {
+				md = md[0:i]
+			}
+
 			alias := nameWithoutExt
 			text := fmt.Sprintf(headerTemplate, title, linkTitle, description, alias) + md
 
@@ -282,6 +288,32 @@ func (o *Options) generateDocs() error {
 		}
 	}
 	return nil
+}
+
+func ReadCobraDescription(md string) string {
+	lines := strings.Split(md, "\n")
+	startedHeader := false
+	buf := &strings.Builder{}
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "## ") {
+			startedHeader = true
+			continue
+		}
+		if strings.HasPrefix(line, "### ") && startedHeader {
+			break
+		}
+		if startedHeader {
+			if buf.Len() > 0 {
+				buf.WriteString(" ")
+			}
+			buf.WriteString(line)
+		}
+	}
+	return buf.String()
 }
 
 func WrapExamplesInCodeBlock(md string) string {
