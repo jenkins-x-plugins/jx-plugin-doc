@@ -278,6 +278,14 @@ func (o *Options) generateDocs() error {
 				md = md[0:i]
 			}
 
+			// lets remove the header as its part of the page metadata
+			i = strings.Index(md, "### ")
+			if i > 0 {
+				md = md[i:]
+			}
+
+			md += fmt.Sprintf("\n\n### Source\n\n[jenkins-x-plugins/%s](https://github.com/jenkins-x-plugins/%s)\n", name, name)
+
 			alias := nameWithoutExt
 			text := fmt.Sprintf(headerTemplate, title, linkTitle, description, alias) + md
 
