@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/cmdrunner"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/files"
@@ -13,10 +17,6 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/termcolor"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
 	"github.com/pkg/errors"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 const (
@@ -36,8 +36,6 @@ var (
 	cloneRepositories = os.Getenv("JX_DISABLE_GIT_CLONE") != "true"
 
 	info = termcolor.ColorInfo
-
-	ignorePlugins = []string{}
 )
 
 func main() {
@@ -120,7 +118,7 @@ func (o *Options) Run() error {
 }
 
 func (o *Options) clonePlugins(ctx context.Context) error {
-	repos, _, err := o.ScmClient.Repositories.ListOrganisation(ctx, "jenkins-x-plugins", scm.ListOptions{
+	repos, _, err := o.ScmClient.Repositories.ListOrganisation(ctx, "jenkins-x-plugins", &scm.ListOptions{
 		Size: 1000,
 	})
 	if err != nil {
@@ -179,16 +177,23 @@ func (o *Options) cloneRepository(repo *scm.Repository) error {
 
 func (o *Options) generateDocs() error {
 	log.Logger().Infof("reading %s", info(o.WorkDir))
-	fileNames, err := ioutil.ReadDir(o.WorkDir)
+	fileNames, err := os.ReadDir(o.WorkDir)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read dir %s", o.WorkDir)
 	}
 
+	destRootDir := filepath.Join(o.Dir, "content", "en", "v3", "develop", "reference", "jx")
 	for _, f := range fileNames {
 		if !f.IsDir() {
 			continue
 		}
 		name := f.Name()
+
+		destPluginDir := filepath.Join(destRootDir, strings.TrimPrefix(name, "jx-"))
+		err := os.RemoveAll(destPluginDir)
+		if err != nil {
+			return errors.Wrapf(err, "failed remove existing plugin documentation %s", destPluginDir)
+		}
 
 		pluginDir := filepath.Join(o.WorkDir, name)
 		srcDir := filepath.Join(pluginDir, "docs", "cmd")
@@ -214,7 +219,7 @@ func (o *Options) generateDocs() error {
 		}
 
 		log.Logger().Infof("found docs %s", info(path))
-		mdFiles, err := ioutil.ReadDir(srcDir)
+		mdFiles, err := os.ReadDir(srcDir)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read %s", srcDir)
 		}
@@ -233,7 +238,6 @@ func (o *Options) generateDocs() error {
 			title := strings.ReplaceAll(nameWithoutPrefix, "_", " ")
 			linkTitle := parts[len(parts)-1]
 
-			destRootDir := filepath.Join(o.Dir, "content", "en", "v3", "develop", "reference", "jx")
 			destDir := filepath.Join(destRootDir, filepath.Join(parts...))
 
 			err = os.MkdirAll(destDir, files.DefaultDirWritePermissions)
@@ -248,7 +252,7 @@ func (o *Options) generateDocs() error {
 			}
 
 			path = filepath.Join(srcDir, mdName)
-			data, err := ioutil.ReadFile(path)
+			data, err := os.ReadFile(path)
 			if err != nil {
 				return errors.Wrapf(err, "failed to read file %s", path)
 			}
@@ -289,7 +293,7 @@ func (o *Options) generateDocs() error {
 			alias := nameWithoutExt
 			text := fmt.Sprintf(headerTemplate, title, linkTitle, description, alias) + md
 
-			err = ioutil.WriteFile(destFile, []byte(text), files.DefaultFileWritePermissions)
+			err = os.WriteFile(destFile, []byte(text), files.DefaultFileWritePermissions)
 			if err != nil {
 				return errors.Wrapf(err, "failed to save file %s", destFile)
 			}
