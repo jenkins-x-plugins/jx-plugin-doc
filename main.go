@@ -16,7 +16,6 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/scmhelpers"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/termcolor"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -75,7 +74,7 @@ func (o *Options) Validate() error {
 	if o.ScmClient == nil {
 		o.ScmClient, err = o.Factory.Create()
 		if err != nil {
-			return errors.Wrapf(err, "failed to create Scm client")
+			return fmt.Errorf("failed to create Scm client: %w", err)
 		}
 	}
 
@@ -88,7 +87,7 @@ func (o *Options) Validate() error {
 	log.Logger().Infof("using directory %s", info(o.WorkDir))
 	err = os.MkdirAll(o.WorkDir, files.DefaultDirWritePermissions)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create dir %s", o.WorkDir)
+		return fmt.Errorf("failed to create dir %s: %w", o.WorkDir, err)
 	}
 	return nil
 }
@@ -96,21 +95,21 @@ func (o *Options) Validate() error {
 func (o *Options) Run() error {
 	err := o.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "failed to validate options")
+		return fmt.Errorf("failed to validate options: %w", err)
 	}
 
 	ctx := context.TODO()
 	if cloneRepositories {
 		err = o.clonePlugins(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "failed to clone plugins")
+			return fmt.Errorf("failed to clone plugins: %w", err)
 		}
 	}
 	log.Logger().Infof("now generating the plugin CLI docs")
 
 	err = o.generateDocs()
 	if err != nil {
-		return errors.Wrapf(err, "failed to generate docs")
+		return fmt.Errorf("failed to generate docs: %w", err)
 	}
 
 	log.Logger().Infof("completed")
@@ -122,7 +121,7 @@ func (o *Options) clonePlugins(ctx context.Context) error {
 		Size: 1000,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "failed to find repositories")
+		return fmt.Errorf("failed to find repositories: %w", err)
 	}
 
 	for _, repo := range repos {
@@ -139,7 +138,7 @@ func (o *Options) clonePlugins(ctx context.Context) error {
 		}
 		err = o.cloneRepository(repo)
 		if err != nil {
-			return errors.Wrapf(err, "failed to clone repository")
+			return fmt.Errorf("failed to clone repository: %w", err)
 		}
 	}
 	return nil
@@ -158,19 +157,19 @@ func (o *Options) cloneRepository(repo *scm.Repository) error {
 
 	dir, err := filepath.Abs(o.WorkDir)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get absolute dir of %s", o.WorkDir)
+		return fmt.Errorf("failed to get absolute dir of %s: %w", o.WorkDir, err)
 	}
 
 	toDir := filepath.Join(dir, repo.Name)
 	err = os.MkdirAll(toDir, files.DefaultDirWritePermissions)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create dir %s", toDir)
+		return fmt.Errorf("failed to create dir %s: %w", toDir, err)
 	}
 
 	log.Logger().Infof("cloning plugin %s to %s ", info(repo.Name), info(toDir))
 	_, err = gitclient.CloneToDir(o.GitClient, gitURL, toDir)
 	if err != nil {
-		return errors.Wrapf(err, "failed to clone %s to %s", gitURL, toDir)
+		return fmt.Errorf("failed to clone %s to %s: %w", gitURL, toDir, err)
 	}
 	return nil
 }
@@ -179,7 +178,7 @@ func (o *Options) generateDocs() error {
 	log.Logger().Infof("reading %s", info(o.WorkDir))
 	fileNames, err := os.ReadDir(o.WorkDir)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read dir %s", o.WorkDir)
+		return fmt.Errorf("failed to read dir %s: %w", o.WorkDir, err)
 	}
 
 	destRootDir := filepath.Join(o.Dir, "content", "en", "v3", "develop", "reference", "jx")
@@ -192,7 +191,7 @@ func (o *Options) generateDocs() error {
 		destPluginDir := filepath.Join(destRootDir, strings.TrimPrefix(name, "jx-"))
 		err := os.RemoveAll(destPluginDir)
 		if err != nil {
-			return errors.Wrapf(err, "failed remove existing plugin documentation %s", destPluginDir)
+			return fmt.Errorf("failed remove existing plugin documentation %s: %w", destPluginDir, err)
 		}
 
 		pluginDir := filepath.Join(o.WorkDir, name)
@@ -201,18 +200,18 @@ func (o *Options) generateDocs() error {
 		path := filepath.Join(srcDir, nameDotMd)
 		exists, err := files.FileExists(path)
 		if err != nil {
-			return errors.Wrapf(err, "failed to check if file exists %s", path)
+			return fmt.Errorf("failed to check if file exists %s: %w", path, err)
 		}
 		if !exists {
 			path = filepath.Join(pluginDir, "README.md")
 			readmeExist, err := files.FileExists(path)
 			if err != nil {
-				return errors.Wrapf(err, "failed to check if file exists %s", path)
+				return fmt.Errorf("failed to check if file exists %s: %w", path, err)
 			}
 			path := filepath.Join(pluginDir, "docs", "cmd")
 			docsExist, err := files.DirExists(path)
 			if err != nil {
-				return errors.Wrapf(err, "failed to check if dir exists %s", path)
+				return fmt.Errorf("failed to check if dir exists %s: %w", path, err)
 			}
 			log.Logger().Infof("docs %s exists: %v README exists %v", path, docsExist, readmeExist)
 			continue
@@ -221,7 +220,7 @@ func (o *Options) generateDocs() error {
 		log.Logger().Infof("found docs %s", info(path))
 		mdFiles, err := os.ReadDir(srcDir)
 		if err != nil {
-			return errors.Wrapf(err, "failed to read %s", srcDir)
+			return fmt.Errorf("failed to read %s: %w", srcDir, err)
 		}
 
 		for _, f := range mdFiles {
@@ -242,7 +241,7 @@ func (o *Options) generateDocs() error {
 
 			err = os.MkdirAll(destDir, files.DefaultDirWritePermissions)
 			if err != nil {
-				return errors.Wrapf(err, "failed to create dir %s", destDir)
+				return fmt.Errorf("failed to create dir %s: %w", destDir, err)
 			}
 
 			destFile := filepath.Join(destDir, "_index.md")
@@ -254,7 +253,7 @@ func (o *Options) generateDocs() error {
 			path = filepath.Join(srcDir, mdName)
 			data, err := os.ReadFile(path)
 			if err != nil {
-				return errors.Wrapf(err, "failed to read file %s", path)
+				return fmt.Errorf("failed to read file %s: %w", path, err)
 			}
 			description := ReadCobraDescription(string(data))
 			md := strings.ReplaceAll(string(data), ".md)", ")")
@@ -295,7 +294,7 @@ func (o *Options) generateDocs() error {
 
 			err = os.WriteFile(destFile, []byte(text), files.DefaultFileWritePermissions)
 			if err != nil {
-				return errors.Wrapf(err, "failed to save file %s", destFile)
+				return fmt.Errorf("failed to save file %s: %w", destFile, err)
 			}
 		}
 	}
